@@ -1,0 +1,5 @@
+server:
+  origin: 'this is origin which is define for production'
+
+db:
+  synchroinze: false
