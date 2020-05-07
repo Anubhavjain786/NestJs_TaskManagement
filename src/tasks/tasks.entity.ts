@@ -7,9 +7,11 @@ import {
 } from 'typeorm';
 import { TaskStatus } from './task.status.enum';
 import { User } from '../auth/user.entity';
+import { Exclude, Expose } from 'class-transformer';
 
 @Entity()
 export class Task extends BaseEntity {
+  @Exclude()
   @PrimaryGeneratedColumn()
   id: number;
 
@@ -34,4 +36,9 @@ export class Task extends BaseEntity {
 
   @Column()
   userId: number;
+
+  // @Expose()
+  // get getId(): string {
+  //   return `${this.uuid}`;
+  // }
 }

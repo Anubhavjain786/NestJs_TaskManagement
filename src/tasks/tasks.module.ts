@@ -1,13 +1,29 @@
 import { Module } from '@nestjs/common';
+import { AppGateway } from '../app.gateway';
 import { TasksController } from './tasks.controller';
 import { TasksService } from './tasks.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { TaskRepository } from './task.repository';
 import { AuthModule } from 'src/auth/auth.module';
+import { BullModule } from '@nestjs/bull';
+import { MulterModule } from '@nestjs/platform-express';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([TaskRepository]), AuthModule],
+  imports: [
+    TypeOrmModule.forFeature([TaskRepository]),
+    AuthModule,
+    BullModule.registerQueue({
+      name: 'EmailQueue',
+      redis: {
+        host: 'localhost',
+        port: 6379,
+      },
+    }),
+    MulterModule.register({
+      dest: './uploads',
+    }),
+  ],
   controllers: [TasksController],
-  providers: [TasksService],
+  providers: [TasksService, AppGateway],
 })
 export class TasksModule {}

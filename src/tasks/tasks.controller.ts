@@ -2,16 +2,18 @@ import {
   Controller,
   Get,
   Post,
-  Body,
   Param,
   Delete,
   Patch,
-  Query,
   UsePipes,
   ValidationPipe,
   ParseIntPipe,
   UseGuards,
   Logger,
+  UseInterceptors,
+  UploadedFile,
+  ClassSerializerInterceptor,
+  Query,
 } from '@nestjs/common';
 import { TasksService } from './tasks.service';
 import { CreateTaskDto } from './dto/create-task.dto';
@@ -22,6 +24,11 @@ import { TaskStatus } from './task.status.enum';
 import { AuthGuard } from '@nestjs/passport';
 import { User } from '../auth/user.entity';
 import { GetUser } from 'src/auth/get-user.decorator';
+import { GetAllInputs } from '../middleware/all-inputes.middleware';
+import { getValidation } from './validation/getValidation';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { transform } from './transform';
+import { Body } from '@nestjs/common';
 
 @Controller('tasks')
 @UseGuards(AuthGuard())
@@ -30,54 +37,64 @@ export class TasksController {
   constructor(private taskService: TasksService) {}
 
   @Get()
-  getTasks(
-    @Query(ValidationPipe) fileterDto: GetTaskFilterDto,
+  @UseInterceptors(ClassSerializerInterceptor)
+  async getTasks(
+    @Query(ValidationPipe) filterDto: GetTaskFilterDto,
     @GetUser() user: User,
-  ): Promise<Task[]> {
+  ) {
     this.logger.verbose(
       `User "${user.username}" retriving all tasks. Filters: ${JSON.stringify(
-        fileterDto,
+        filterDto,
       )}`,
     );
-    return this.taskService.getTasks(fileterDto, user);
+    let result = await this.taskService.getTasks(
+      filterDto,
+      // getValidation(inputs, 'getTasks'),
+      user,
+    );
+    return { status: 'success', data: transform(result) };
   }
 
   @Get('/:id')
-  getTaskById(
-    @Param('id', ParseIntPipe) id: number,
-    @GetUser() user: User,
-  ): Promise<Task> {
-    return this.taskService.getTaskById(id, user);
+  @UseInterceptors(ClassSerializerInterceptor)
+  async getTaskById(@Param('id') id: string, @GetUser() user: User) {
+    let result = await this.taskService.getTaskById(id, user);
+    return { status: 'success', data: transform(result) };
   }
 
   @Post()
   @UsePipes(ValidationPipe)
-  createNewTask(
-    @Body() createTaskDto: CreateTaskDto,
+  async createNewTask(
+    @GetAllInputs() createTaskDto: CreateTaskDto,
     @GetUser() user: User,
-  ): Promise<Task> {
+  ) {
     this.logger.verbose(
       `user "${user.username}" creating a new task. Data: ${JSON.stringify(
         createTaskDto,
       )}`,
     );
-    return this.taskService.createTask(createTaskDto, user);
+    let result = await this.taskService.createTask(createTaskDto, user);
+    return { status: 'success', data: transform(result) };
+  }
+  @Post('/banner')
+  @UseInterceptors(FileInterceptor('image'))
+  uploadFile(@UploadedFile() file) {
+    console.log(file);
   }
 
   @Delete('/:id')
-  deleteTask(
-    @Param('id', ParseIntPipe) id: number,
-    @GetUser() user: User,
-  ): Promise<void> {
-    return this.taskService.deleteTask(id, user);
+  async deleteTask(@Param('id') id: string, @GetUser() user: User) {
+    let result = await this.taskService.deleteTask(id, user);
+    return { status: 'success', data: transform(result) };
   }
 
   @Patch('/:id/status')
-  updateTaskStatus(
-    @Param('id', ParseIntPipe) id: number,
+  async updateTaskStatus(
+    @Param('id') id: string,
     @Body('status', TaskStatusValidationPipe) status: TaskStatus,
     @GetUser() user: User,
-  ): Promise<Task> {
-    return this.taskService.updateTaskStatus(id, status, user);
+  ) {
+    let result = await this.taskService.updateTaskStatus(id, status, user);
+    return { status: 'success', data: result };
   }
 }
