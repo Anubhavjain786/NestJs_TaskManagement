@@ -4,8 +4,8 @@ import * as rateLimit from 'express-rate-limit';
 
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { Logger } from '@nestjs/common';
-import { HttpExceptionFilter } from './interceptors/http/exception.filter';
+import { Logger, ValidationPipe } from '@nestjs/common';
+import { AllExceptionsFilter } from './interceptors/http/exception.filter';
 import { TransformInterceptor } from './interceptors/http/response.interceptor';
 
 const logger = new Logger('bootstrap');
@@ -29,8 +29,9 @@ async function bootstrap() {
     }),
   );
   app.use(csurf());
-  app.useGlobalFilters(new HttpExceptionFilter());
   app.useGlobalInterceptors(new TransformInterceptor());
+  app.useGlobalFilters(new AllExceptionsFilter());
+  app.useGlobalPipes(new ValidationPipe());
 
   logger.log(`Application listening on port ${port}`);
 }

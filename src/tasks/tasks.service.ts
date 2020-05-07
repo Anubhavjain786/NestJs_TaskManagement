@@ -8,9 +8,9 @@ import { Task } from './tasks.entity';
 import { TaskStatus } from './task.status.enum';
 import { User } from '../auth/user.entity';
 import { InjectQueue } from '@nestjs/bull';
-import { validate } from 'class-validator';
 import { isValid } from './validation/validate';
 import { CreateTaskDto } from './dto/create-task.dto';
+import { validate } from './validator';
 
 @Injectable()
 export class TasksService {
@@ -24,10 +24,9 @@ export class TasksService {
     private gateway: AppGateway,
   ) {}
 
-  async getTasks(inputs, user: User) {
-    // if (isValid(inputs)) {
-    return await this.taskRepository.getTasks(inputs, user);
-    // }
+  async getTasks(inputs) {
+    const verifyedInput = await validate('get-task', inputs);
+    return await this.taskRepository.getTasks(verifyedInput, inputs.user);
   }
 
   async getTaskById(id: string, user: User) {
@@ -41,12 +40,14 @@ export class TasksService {
     return found;
   }
 
-  async createTask(createTaskDto: CreateTaskDto, user: User) {
-    const newTask = await this.taskRepository.createTask(createTaskDto, user);
+  async createTask(inputs) {
+    const { user } = inputs;
+    const validateInput = await validate('create-task', inputs);
+    const newTask = await this.taskRepository.createTask(validateInput, user);
     const job = await this.emailQueue.add('CreateTask', {
       email: user.username,
-      title: createTaskDto.title,
-      description: createTaskDto.description,
+      title: validateInput.title,
+      description: validateInput.description,
     });
 
     this.gateway.wss.emit('newTask', newTask);
@@ -60,7 +61,7 @@ export class TasksService {
     });
 
     if (result.affected === 0) {
-      throw new NotFoundException(`Error......Tasks ${id} Not Found`);
+      throw new NotFoundException('Not Found');
     }
     return result;
   }

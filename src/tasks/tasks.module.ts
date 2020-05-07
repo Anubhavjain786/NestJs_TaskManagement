@@ -7,6 +7,8 @@ import { TaskRepository } from './task.repository';
 import { AuthModule } from 'src/auth/auth.module';
 import { BullModule } from '@nestjs/bull';
 import { MulterModule } from '@nestjs/platform-express';
+import { APP_FILTER } from '@nestjs/core';
+import { AllExceptionsFilter } from '../interceptors/http/exception.filter';
 
 @Module({
   imports: [
@@ -24,6 +26,13 @@ import { MulterModule } from '@nestjs/platform-express';
     }),
   ],
   controllers: [TasksController],
-  providers: [TasksService, AppGateway],
+  providers: [
+    TasksService,
+    AppGateway,
+    {
+      provide: APP_FILTER,
+      useClass: AllExceptionsFilter,
+    },
+  ],
 })
 export class TasksModule {}

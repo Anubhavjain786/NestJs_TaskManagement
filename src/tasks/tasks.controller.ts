@@ -14,12 +14,11 @@ import {
   UploadedFile,
   ClassSerializerInterceptor,
   Query,
+  UseFilters,
+  Body,
 } from '@nestjs/common';
 import { TasksService } from './tasks.service';
-import { CreateTaskDto } from './dto/create-task.dto';
-import { GetTaskFilterDto } from './dto/get-tasks-filter.dto';
 import { TaskStatusValidationPipe } from './pipes/task-status.validation.pipe';
-import { Task } from './tasks.entity';
 import { TaskStatus } from './task.status.enum';
 import { AuthGuard } from '@nestjs/passport';
 import { User } from '../auth/user.entity';
@@ -28,7 +27,6 @@ import { GetAllInputs } from '../middleware/all-inputes.middleware';
 import { getValidation } from './validation/getValidation';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { transform } from './transform';
-import { Body } from '@nestjs/common';
 
 @Controller('tasks')
 @UseGuards(AuthGuard())
@@ -38,20 +36,14 @@ export class TasksController {
 
   @Get()
   @UseInterceptors(ClassSerializerInterceptor)
-  async getTasks(
-    @Query(ValidationPipe) filterDto: GetTaskFilterDto,
-    @GetUser() user: User,
-  ) {
+  async getTasks(@GetAllInputs() inputs) {
+    const { search, status, user } = inputs;
     this.logger.verbose(
       `User "${user.username}" retriving all tasks. Filters: ${JSON.stringify(
-        filterDto,
+        inputs,
       )}`,
     );
-    let result = await this.taskService.getTasks(
-      filterDto,
-      // getValidation(inputs, 'getTasks'),
-      user,
-    );
+    let result = await this.taskService.getTasks({ search, status, user });
     return { status: 'success', data: transform(result) };
   }
 
@@ -63,19 +55,21 @@ export class TasksController {
   }
 
   @Post()
-  @UsePipes(ValidationPipe)
-  async createNewTask(
-    @GetAllInputs() createTaskDto: CreateTaskDto,
-    @GetUser() user: User,
-  ) {
+  async createNewTask(@GetAllInputs() inputs) {
+    const { title, description, user } = inputs;
     this.logger.verbose(
       `user "${user.username}" creating a new task. Data: ${JSON.stringify(
-        createTaskDto,
+        inputs,
       )}`,
     );
-    let result = await this.taskService.createTask(createTaskDto, user);
+    let result = await this.taskService.createTask({
+      title,
+      description,
+      user,
+    });
     return { status: 'success', data: transform(result) };
   }
+
   @Post('/banner')
   @UseInterceptors(FileInterceptor('image'))
   uploadFile(@UploadedFile() file) {
